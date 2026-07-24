@@ -5,6 +5,7 @@
 % Core packages
 \usepackage{amsmath,amssymb}
 \usepackage{tikz-cd}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
 \usepackage{multicol}
 \usepackage{graphicx}
 \usepackage{array}
@@ -593,12 +594,85 @@ The data model is organized into the following logical domains:
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[height=0.78\textheight,keepaspectratio]{prism-uploads/table_style_er (1).png}
+    \includegraphics[width=\textwidth,height=0.84\textheight,keepaspectratio]{prism-uploads/final_verified_er_2.png}
     \caption{Entity relationship diagram for the Workforce Execution Platform MVP.}
     \label{fig:data-model-er}
 \end{figure}
 
 \clearpage
+\subsection{Authorization Database Model (DBML)}
+
+The authorization portion of the database model retains the existing
+\texttt{user\_scopes} table and makes role assignments project-specific through
+\texttt{user\_roles.project\_id}. The relevant DBML definition is shown below.
+
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Table users {
+  id uuid [pk]
+  full_name varchar
+  email varchar [unique, not null]
+  password_hash varchar [not null]
+  is_active boolean [not null]
+}
+
+Table projects {
+  id uuid [pk]
+  name varchar [not null]
+  code varchar [unique, not null]
+}
+
+Table regions {
+  id uuid [pk]
+  project_id uuid [not null, ref: > projects.id]
+  name varchar [not null]
+}
+
+Table locations {
+  id uuid [pk]
+  region_id uuid [not null, ref: > regions.id]
+  code varchar [unique, not null]
+  name varchar [not null]
+}
+
+Table roles {
+  id uuid [pk]
+  name varchar [unique, not null]
+}
+
+Table permissions {
+  id uuid [pk]
+  code varchar [unique, not null]
+  description varchar
+}
+
+Table user_roles {
+  user_id uuid [not null, ref: > users.id]
+  project_id uuid [not null, ref: > projects.id]
+  role_id uuid [not null, ref: > roles.id]
+
+  indexes {
+    (user_id, project_id, role_id) [unique]
+  }
+}
+
+Table role_permissions {
+  role_id uuid [not null, ref: > roles.id]
+  permission_id uuid [not null, ref: > permissions.id]
+
+  indexes {
+    (role_id, permission_id) [unique]
+  }
+}
+
+Table user_scopes {
+  id uuid [pk]
+  user_id uuid [not null, ref: > users.id]
+  project_id uuid [not null, ref: > projects.id]
+  region_id uuid [ref: > regions.id]
+  location_id uuid [ref: > locations.id]
+}
+\end{lstlisting}
+
 \subsection{Design Decisions}
 
 The following design decisions were made while modeling the database:
@@ -621,6 +695,17 @@ The following design decisions were made while modeling the database:
     \item User permissions are managed using Role-Based Access Control (RBAC),
           while Project, Region, and Location access is enforced through scope
           assignments.
+    \item User roles are assigned per Project through the
+          \texttt{user\_roles} table. Its composite unique constraint on
+          \texttt{(user\_id, project\_id, role\_id)} prevents the same role from
+          being assigned to the same user more than once within a Project while
+          allowing different assignments across Projects.
+    \item The existing \texttt{user\_scopes} model is retained to represent
+          Project, Region, and Location access; no separate user-assignment
+          model is required for the MVP.
+    \item Conflicting operational roles are not enforced through database
+          constraints. The backend validates Separation of Duties rules before
+          creating or changing a Project role assignment.
 \end{itemize}
 
 \subsection{Entity Relationships}
@@ -640,6 +725,11 @@ The main relationships within the data model are summarized below:
     \item Every workflow transition is recorded in the \textbf{Workflow
           History} table.
     \item Notifications are linked to the target application user.
+    \item A \textbf{User Role} links one User, one Project, and one Role.
+    \item A \textbf{Role} is linked to its Permissions through
+          \textbf{Role Permissions}.
+    \item A \textbf{User Scope} links a User to an authorized Project and,
+          where applicable, a Region or Location within that Project.
 \end{itemize}
 
 \subsection{MVP Considerations}
@@ -654,6 +744,11 @@ application layer rather than being stored as configurable database entities.
 This approach reduces implementation complexity during the MVP phase while
 allowing future migration toward a configuration-driven workflow engine without
 significant database redesign.
+
+The database prevents duplicate Project role assignments through the composite
+unique constraint. Business conflicts remain application rules: a user cannot
+hold more than one operational role---Head of Master, Site Chief, Technical
+Office Engineer, or Project Manager---within the same Project.
 
 \clearpage
 \section{REST API Design}
@@ -883,7 +978,8 @@ Error responses follow the same structure:
     \hline
     404 Not Found & Resource not found \\
     \hline
-    409 Conflict & Business rule conflict \\
+    409 Conflict & Business rule conflict, including an incompatible Project
+    role assignment \\
     \hline
     500 Internal Server Error & Unexpected server error \\
     \hline
@@ -1249,35 +1345,41 @@ desktop and mobile applications.
 
 \subsection{Authorization}
 
-Authorization is implemented using Role-Based Access Control (RBAC) combined
-with organizational scopes.
+Authorization combines JWT Authentication, Role-Based Access Control (RBAC),
+Scope-Based Authorization, and backend business validation. JWT identifies the
+authenticated user, project-specific roles determine the user's permissions,
+and scopes restrict access to the authorized Project, Region, or Location.
+Backend business validation then enforces operational rules that cannot be
+expressed safely as generic database constraints.
 
-Each user is assigned one or more roles (e.g., Technical Office Engineer, Head
-of Master, Site Chief, or Project Manager), while permissions define the
-actions each role can perform.
+Each user may receive roles independently for different Projects. The
+\texttt{user\_roles} table includes \texttt{project\_id}, and its composite
+unique constraint on \texttt{(user\_id, project\_id, role\_id)} prevents a user
+from receiving the same role twice within the same Project. The existing
+\texttt{user\_scopes} table continues to define Project, Region, and Location
+access.
 
 \begin{figure}[htbp]
     \centering
     \begin{tikzpicture}[>=stealth,
-        scopebox/.style={draw,rounded corners,align=center,minimum width=2.5cm,
-                         minimum height=0.7cm}]
-        \node[scopebox] (project) at (0,0) {Project};
-        \node[scopebox] (regiona) at (-3,-1.5) {Region A};
-        \node[scopebox] (regionb) at (3,-1.5) {Region B};
-        \node[scopebox] (location1) at (-4.5,-3) {Location 1};
-        \node[scopebox] (location2) at (-1.5,-3) {Location 2};
-        \node[scopebox] (location3) at (1.5,-3) {Location 3};
-        \node[scopebox] (location4) at (4.5,-3) {Location 4};
+        authbox/.style={draw,rounded corners,align=center,minimum width=6.2cm,
+                        minimum height=0.72cm}]
+        \node[authbox] (user) at (0,0) {User};
+        \node[authbox] (roles) at (0,-1.25) {User Roles (per Project)};
+        \node[authbox] (permissions) at (0,-2.5) {Permissions};
+        \node[authbox] (scope) at (0,-3.75)
+              {Scope (Project $\rightarrow$ Region $\rightarrow$ Location)};
+        \node[authbox] (validation) at (0,-5) {Backend Business Validation};
+        \node[authbox] (access) at (0,-6.25) {API Access};
 
-        \draw[->,thick] (project) -- (regiona);
-        \draw[->,thick] (project) -- (regionb);
-        \draw[->,thick] (regiona) -- (location1);
-        \draw[->,thick] (regiona) -- (location2);
-        \draw[->,thick] (regionb) -- (location3);
-        \draw[->,thick] (regionb) -- (location4);
+        \draw[->,thick] (user) -- (roles);
+        \draw[->,thick] (roles) -- (permissions);
+        \draw[->,thick] (permissions) -- (scope);
+        \draw[->,thick] (scope) -- (validation);
+        \draw[->,thick] (validation) -- (access);
     \end{tikzpicture}
-    \caption{Authorization scope hierarchy.}
-    \label{fig:authorization-scope-hierarchy}
+    \caption{Authorization evaluation flow.}
+    \label{fig:authorization-evaluation-flow}
 \end{figure}
 
 User authorization is validated using the following hierarchical scopes:
@@ -1295,6 +1397,19 @@ A user may be assigned access at the Project, Region, or Location level,
 depending on business requirements. Access granted at a higher level applies
 to its subordinate organizational units, subject to the user's role and
 permissions.
+
+Database constraints prevent duplicate role assignments, while backend
+business validation prevents conflicting operational roles. For the MVP, a
+user cannot hold multiple operational roles---Head of Master, Site Chief,
+Technical Office Engineer, or Project Manager---within the same Project. This
+Separation of Duties rule prevents a user from approving their own work.
+
+If a conflicting assignment is attempted, the backend returns
+\texttt{409 Conflict} with the reason:
+
+\begin{quote}
+\texttt{User already has an operational role in this project.}
+\end{quote}
 
 \subsection{Password Security}
 
@@ -1429,6 +1544,7 @@ production use:
     \item JWT Authentication
     \item RBAC Authorization
     \item Organizational Scope Validation
+    \item Backend Business Validation for conflicting operational roles
     \item HTTPS Communication
     \item Password Hashing
     \item Audit Logging
@@ -1438,6 +1554,121 @@ production use:
 More advanced security features, such as Multi-Factor Authentication (MFA),
 Single Sign-On (SSO), and external identity providers, can be introduced in
 future releases as business requirements evolve.
+
+\clearpage
+\section{Scope Hierarchy (Authorization Scope)}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+        font=\small,
+        hierarchy/.style={
+            draw,
+            rounded corners=3pt,
+            minimum height=0.85cm,
+            align=center,
+            line width=0.7pt
+        },
+        project/.style={
+            hierarchy,
+            fill=blue!16,
+            draw=blue!65!black,
+            text width=4.0cm,
+            font=\small\bfseries
+        },
+        region/.style={
+            hierarchy,
+            fill=teal!14,
+            draw=teal!65!black,
+            text width=3.15cm
+        },
+        location/.style={
+            hierarchy,
+            fill=orange!17,
+            draw=orange!75!black,
+            text width=2.25cm
+        },
+        role/.style={
+            draw=gray!65,
+            rounded corners=3pt,
+            fill=gray!7,
+            text width=3.75cm,
+            minimum height=1.45cm,
+            align=left,
+            inner sep=7pt
+        },
+        relation/.style={-{Stealth[length=2.2mm]}, line width=0.75pt,
+            draw=gray!75},
+        access/.style={-{Stealth[length=2.2mm]}, line width=0.8pt,
+            dashed, draw=violet!75!black}
+    ]
+        % Organizational scope hierarchy
+        \node[project] (project) at (0,0)
+            {Project A\\\footnotesize Complete project scope};
+
+        \node[region] (region1) at (-3.25,-1.45)
+            {Region 1\\\footnotesize Regional scope};
+        \node[region] (region2) at (3.25,-1.45)
+            {Region 2\\\footnotesize Regional scope};
+
+        \node[location] (loc11) at (-5.0,-2.95)
+            {Location 1\\\footnotesize (KKK)};
+        \node[location] (loc12) at (-1.7,-2.95)
+            {Location 2\\\footnotesize (KKK)};
+        \node[location] (loc21) at (1.7,-2.95)
+            {Location 3\\\footnotesize (KKK)};
+        \node[location] (loc22) at (5.0,-2.95)
+            {Location 4\\\footnotesize (KKK)};
+
+        \draw[relation] (project) -- (region1);
+        \draw[relation] (project) -- (region2);
+        \draw[relation] (region1) -- (loc11);
+        \draw[relation] (region1) -- (loc12);
+        \draw[relation] (region2) -- (loc21);
+        \draw[relation] (region2) -- (loc22);
+
+        % Representative role-to-scope assignments
+        \node[role] (pm) at (-5.0,-5.55) {
+            \textbf{Project Manager}\\
+            Can approve and view records across the assigned project.};
+        \node[role] (regional) at (0,-5.55) {
+            \textbf{Technical Office / Site Chief}\\
+            Can plan or review work within the assigned region.};
+        \node[role] (hom) at (5.0,-5.55) {
+            \textbf{Head of Master}\\
+            Can manage crews and execution within assigned locations.};
+
+        \begin{scope}[on background layer]
+            \node[draw=gray!35, rounded corners=5pt, fill=gray!2,
+                fit=(project)(region1)(region2)(loc11)(loc12)(loc21)(loc22),
+                inner sep=9pt,
+                label={[font=\small\bfseries]above:Organizational Scope}] {};
+            \node[draw=gray!35, rounded corners=5pt, fill=gray!2,
+                fit=(pm)(regional)(hom), inner sep=9pt] {};
+        \end{scope}
+
+        \node at (0,-4.20) [font=\small\bfseries]
+            {Role Access Examples};
+
+        \draw[access] (pm.north) -- (-6.25,-4.25) |- (project.west);
+        \draw[access] (regional.north) -- (0,-3.75) -- (0,-1.95) --
+            (region2.south west);
+        \draw[access] (hom.north) -- (loc22.south);
+    \end{tikzpicture}
+    \caption{Scope-based authorization hierarchy and role access examples.}
+    \label{fig:scope-authorization-hierarchy}
+\end{figure}
+
+The system combines RBAC (Role-Based Access Control) with Scope-Based
+Authorization.
+
+RBAC determines \textbf{WHAT} a user can do (permissions).
+
+Scope determines \textbf{WHERE} a user can perform those actions (Project
+$\rightarrow$ Region $\rightarrow$ Location).
+
+Every API request validates both the user's permissions and their assigned
+scope before granting access.
 
 \clearpage
 \section{Technology Stack \& Justification}
