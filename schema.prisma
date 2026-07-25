@@ -1,0 +1,433 @@
+// ============================================================================
+// Workforce Execution Platform - Prisma Schema
+//
+// This schema implements EXACTLY the ER Diagram / DBML in Section 9 of the
+// Solution Architecture Proposal (SDD), plus the following infrastructure
+// tables which the SDD requires functionally but does not model in the ER
+// diagram (they are explicitly called out elsewhere in the document):
+//   - RefreshToken   -> SDD 12.2 Authentication ("Refresh Token")
+//   - IdempotencyKey -> SDD 12 "Offline Strategy" / "Synchronization Principle"
+//   - AuditLog       -> SDD 12.6 Audit Logging (generic audit trail incl.
+//                        login events; distinct from WorkflowHistory, which
+//                        is specifically the Daily Plan state-transition log
+//                        described in Section 8/9.4)
+//
+// No business rule, workflow state, or scope hierarchy has been altered.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  fullName     String    @map("full_name")
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  userRoles           UserRole[]
+  userScopes          UserScope[]
+  refreshTokens       RefreshToken[]
+  notifications       Notification[]
+  createdDailyPlans   DailyPlan[]       @relation("TechnicalOfficeCreator")
+  assignedDailyPlans  DailyPlan[]       @relation("AssignedHeadOfMaster")
+  workflowActions     WorkflowHistory[] @relation("WorkflowPerformer")
+  auditLogs           AuditLog[]
+
+  @@map("users")
+}
+
+model Role {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+/// Roles are assigned per Project (SDD 9.2 / 9.3).
+/// Composite PK (user_id, project_id, role_id) prevents the same role being
+/// assigned to the same user twice within the same Project, while allowing
+/// different assignments across Projects.
+model UserRole {
+  userId    String   @map("user_id") @db.Uuid
+  projectId String   @map("project_id") @db.Uuid
+  roleId    String   @map("role_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  role    Role    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, projectId, roleId])
+  @@index([projectId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+/// Project / Region / Location authorization scope (SDD 9.2, 13).
+/// A scope may be Project-wide (region/location null), Region-wide
+/// (location null), or Location-specific.
+model UserScope {
+  id         String  @id @default(uuid()) @db.Uuid
+  userId     String  @map("user_id") @db.Uuid
+  projectId  String  @map("project_id") @db.Uuid
+  regionId   String? @map("region_id") @db.Uuid
+  locationId String? @map("location_id") @db.Uuid
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  region   Region?   @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  location Location? @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, projectId, regionId, locationId])
+  @@map("user_scopes")
+}
+
+/// Hashed refresh tokens for session/refresh management (SDD 12.2).
+model RefreshToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ----------------------------------------------------------------------------
+// Organization Structure
+// ----------------------------------------------------------------------------
+
+model Project {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String
+  code      String    @unique
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  regions     Region[]
+  userRoles   UserRole[]
+  userScopes  UserScope[]
+  dailyPlans  DailyPlan[]
+
+  @@map("projects")
+}
+
+model Region {
+  id        String    @id @default(uuid()) @db.Uuid
+  projectId String    @map("project_id") @db.Uuid
+  name      String
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  locations  Location[]
+  userScopes UserScope[]
+  dailyPlans DailyPlan[]
+
+  @@index([projectId])
+  @@map("regions")
+}
+
+model Location {
+  id        String    @id @default(uuid()) @db.Uuid
+  regionId  String    @map("region_id") @db.Uuid
+  code      String    @unique
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  region     Region      @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  userScopes UserScope[]
+  dailyPlans DailyPlan[]
+
+  @@index([regionId])
+  @@map("locations")
+}
+
+// ----------------------------------------------------------------------------
+// Work Breakdown Structure (ToW / SToW / SSToW)
+// ----------------------------------------------------------------------------
+
+model Tow {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  stows      Stow[]
+  dailyPlans DailyPlan[]
+
+  @@map("tow")
+}
+
+model Stow {
+  id        String   @id @default(uuid()) @db.Uuid
+  towId     String   @map("tow_id") @db.Uuid
+  code      String
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tow        Tow         @relation(fields: [towId], references: [id], onDelete: Cascade)
+  sstows     Sstow[]
+  dailyPlans DailyPlan[]
+
+  @@index([towId])
+  @@map("stow")
+}
+
+model Sstow {
+  id        String   @id @default(uuid()) @db.Uuid
+  stowId    String   @map("stow_id") @db.Uuid
+  code      String
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  stow       Stow        @relation(fields: [stowId], references: [id], onDelete: Cascade)
+  dailyPlans DailyPlan[]
+
+  @@index([stowId])
+  @@map("sstow")
+}
+
+// ----------------------------------------------------------------------------
+// Planning & Execution
+// ----------------------------------------------------------------------------
+
+/// Fixed workflow states per SDD Section 8.2 / 8.3.
+enum DailyPlanStatus {
+  DRAFT
+  ASSIGNED
+  IN_PROGRESS
+  SUBMITTED
+  REJECTED
+  APPROVED_BY_SITE_CHIEF
+  APPROVED_BY_PROJECT_MANAGER
+  COMPLETED
+}
+
+model DailyPlan {
+  id        String  @id @default(uuid()) @db.Uuid
+  projectId String  @map("project_id") @db.Uuid
+  regionId  String  @map("region_id") @db.Uuid
+  locationId String @map("location_id") @db.Uuid
+  towId     String  @map("tow_id") @db.Uuid
+  stowId    String  @map("stow_id") @db.Uuid
+  sstowId   String  @map("sstow_id") @db.Uuid
+
+  technicalOfficeId      String  @map("technical_office_id") @db.Uuid
+  assignedHeadMasterId   String? @map("assigned_head_master_id") @db.Uuid
+
+  plannedQuantity Decimal  @map("planned_quantity") @db.Decimal(14, 2)
+  plannedManDay   Decimal  @map("planned_man_day") @db.Decimal(14, 2)
+  actualQuantity  Decimal? @map("actual_quantity") @db.Decimal(14, 2)
+  actualManDay    Decimal? @map("actual_man_day") @db.Decimal(14, 2)
+  overtime        Decimal? @db.Decimal(14, 2)
+
+  workDate DateTime @map("work_date") @db.Date
+  status   DailyPlanStatus @default(DRAFT)
+
+  /// Free-text comment; mandatory (enforced in application layer) when
+  /// execution is partially completed or not started (SDD 4.3).
+  comment String? @db.Text
+
+  /// Mandatory when status = REJECTED (SDD 4.4).
+  rejectionReason String? @map("rejection_reason") @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  project           Project  @relation(fields: [projectId], references: [id])
+  region            Region   @relation(fields: [regionId], references: [id])
+  location          Location @relation(fields: [locationId], references: [id])
+  tow               Tow      @relation(fields: [towId], references: [id])
+  stow              Stow     @relation(fields: [stowId], references: [id])
+  sstow             Sstow    @relation(fields: [sstowId], references: [id])
+  technicalOffice    User     @relation("TechnicalOfficeCreator", fields: [technicalOfficeId], references: [id])
+  assignedHeadMaster User?    @relation("AssignedHeadOfMaster", fields: [assignedHeadMasterId], references: [id])
+
+  crews           Crew[]
+  workflowHistory WorkflowHistory[]
+
+  @@index([projectId])
+  @@index([regionId])
+  @@index([locationId])
+  @@index([assignedHeadMasterId])
+  @@index([status])
+  @@index([workDate])
+  @@map("daily_plans")
+}
+
+model Crew {
+  id          String  @id @default(uuid()) @db.Uuid
+  dailyPlanId String  @map("daily_plan_id") @db.Uuid
+  name        String
+  workerType  String  @map("worker_type")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  dailyPlan    DailyPlan     @relation(fields: [dailyPlanId], references: [id], onDelete: Cascade)
+  crewMembers  CrewMember[]
+
+  @@index([dailyPlanId])
+  @@map("crews")
+}
+
+model Worker {
+  id         String   @id @default(uuid()) @db.Uuid
+  employeeNo String   @unique @map("employee_no")
+  fullName   String   @map("full_name")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  crewMembers CrewMember[]
+
+  @@map("workers")
+}
+
+model CrewMember {
+  crewId   String @map("crew_id") @db.Uuid
+  workerId String @map("worker_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  crew   Crew   @relation(fields: [crewId], references: [id], onDelete: Cascade)
+  worker Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@id([crewId, workerId])
+  @@map("crew_members")
+}
+
+// ----------------------------------------------------------------------------
+// Workflow (Daily Plan status-transition audit trail — SDD 8, 9.3)
+// ----------------------------------------------------------------------------
+
+model WorkflowHistory {
+  id          String  @id @default(uuid()) @db.Uuid
+  dailyPlanId String  @map("daily_plan_id") @db.Uuid
+  fromStatus  String  @map("from_status")
+  toStatus    String  @map("to_status")
+  action      String
+  performedBy String? @map("performed_by") @db.Uuid
+  comment     String? @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  dailyPlan DailyPlan @relation(fields: [dailyPlanId], references: [id], onDelete: Cascade)
+  performer User?     @relation("WorkflowPerformer", fields: [performedBy], references: [id], onDelete: SetNull)
+
+  @@index([dailyPlanId])
+  @@map("workflow_history")
+}
+
+// ----------------------------------------------------------------------------
+// Notifications
+// ----------------------------------------------------------------------------
+
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  title     String
+  body      String   @db.Text
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+// ----------------------------------------------------------------------------
+// Cross-cutting infrastructure (SDD 12.6 Audit Logging, SDD 12 Offline Sync)
+// ----------------------------------------------------------------------------
+
+/// Generic audit trail (SDD 12.6): login, create, update, delete, submit,
+/// approve, reject — for ANY entity, not only Daily Plan transitions.
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id") @db.Uuid
+  oldValue   Json?    @map("old_value")
+  newValue   Json?    @map("new_value")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+/// Idempotency-Key store (SDD "Offline Strategy" — Synchronization
+/// Principle): records the result of the first execution of a
+/// client-generated request identifier so retried/replayed offline-sync
+/// requests return the original result instead of re-applying the action.
+model IdempotencyKey {
+  id           String   @id @default(uuid()) @db.Uuid
+  key          String   @unique
+  userId       String?  @map("user_id") @db.Uuid
+  requestPath  String   @map("request_path")
+  requestHash  String   @map("request_hash")
+  statusCode   Int      @map("status_code")
+  responseBody Json     @map("response_body")
+  createdAt    DateTime @default(now()) @map("created_at")
+  expiresAt    DateTime @map("expires_at")
+
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
