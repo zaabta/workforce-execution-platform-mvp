@@ -13,7 +13,7 @@ async function bootstrap(): Promise<void> {
 
   const corsOrigins = config.get<string>('CORS_ORIGINS', '');
   app.enableCors({
-    origin: corsOrigins ? corsOrigins.split(',').map((o) => o.trim()) : true,
+    origin: corsOrigins ? corsOrigins.split(',').map((o) => o.trim()) : false,
     credentials: true,
   });
 

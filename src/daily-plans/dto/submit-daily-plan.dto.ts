@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 export class SubmitDailyPlanDto {
   @ApiProperty({ example: 85 })
@@ -25,5 +25,6 @@ export class SubmitDailyPlanDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   comment?: string;
 }
