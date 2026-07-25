@@ -1,317 +1,98 @@
-# Workforce Execution Platform (MVP)
+<p align="center">
+  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+</p>
 
-A System Design Case Study for digitizing daily field operations, crew management, approval workflows, and reporting.
+[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
+[circleci-url]: https://circleci.com/gh/nestjs/nest
 
-This project presents a scalable **Minimum Viable Product (MVP)** architecture designed to replace Excel-based planning and manual approval processes with a centralized web and mobile platform.
+  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
+    <p align="center">
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
+<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
+<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
+<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
+<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
+  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
+    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
+  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
+</p>
+  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
+  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
----
+## Description
 
-## Project Overview
+[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
-The platform enables organizations to manage the complete daily workforce execution lifecycle:
+## Project setup
 
-- Create Daily Plans from monthly production plans
-- Assign work to Head of Masters
-- Create crews and assign workers
-- Execute field operations
-- Submit actual progress
-- Multi-level approval workflow
-- Automatic Daily Report generation
-- Power BI integration for KPI reporting
-
----
-
-## Business Workflow
-
-```text
-Technical Office
-        │
-        ▼
-Create Daily Plan
-        │
-        ▼
-Assign to Head of Master
-        │
-        ▼
-Create Crew
-Assign Workers
-        │
-        ▼
-Execute Work
-        │
-        ▼
-Submit Actual Quantity
-        │
-        ▼
-Site Chief Approval
-        │
-        ▼
-Project Manager Approval
-        │
-        ▼
-Daily Report
-        │
-        ▼
-Power BI Dashboard
+```bash
+$ pnpm install
 ```
 
----
+## Compile and run the project
 
-# Features
+```bash
+# development
+$ pnpm run start
 
-### Functional Requirements
+# watch mode
+$ pnpm run start:dev
 
-- Authentication & Authorization
-- Project Management
-- Region & Location Management
-- Daily Planning
-- Crew Management
-- Worker Assignment
-- Approval Workflow
-- Push Notifications
-- Daily Reporting
-- Power BI Integration
-- Audit History
-
----
-
-### Non-Functional Requirements
-
-- Scalability
-- High Availability
-- Performance
-- Security
-- Offline Mobile Support
-- Caching
-- Audit Logging
-- Monitoring
-- Maintainability
-- Extensibility
-
----
-
-# Architecture
-
-The MVP follows a **Modular Monolith Architecture**.
-
-Future migration to Microservices is supported without major architectural changes.
-
-## High-Level Components
-
-- Desktop Web Application
-- Mobile Application
-- REST API
-- Authentication Layer
-- RBAC Authorization
-- Business Modules
-- PostgreSQL
-- Redis Cache
-- Firebase Cloud Messaging
-- Power BI
-
----
-
-# Technology Stack
-
-| Layer | Technology |
-|---------|------------|
-| Frontend | React + TypeScript |
-| Mobile | React Native |
-| Backend | NestJS |
-| Database | PostgreSQL |
-| Cache | Redis |
-| Authentication | JWT |
-| Notifications | Firebase Cloud Messaging (FCM) |
-| Reporting | Power BI |
-| Deployment | Docker |
-
----
-
-# Core Modules
-
-- Authentication
-- User Management
-- Role & Permission Management
-- Project Management
-- Daily Planning
-- Crew Management
-- Approval Workflow
-- Reporting
-- Notifications
-- Audit History
-
----
-
-# Authorization Model
-
-The platform implements:
-
-- Role-Based Access Control (RBAC)
-- Scope-Based Authorization
-
-Scopes include:
-
-- Project
-- Region
-- Location
-
-Permissions are dynamically assigned to Roles, allowing future business changes without modifying application logic.
-
----
-
-# Approval Workflow
-
-```text
-Draft
-    │
-    ▼
-Assigned
-    │
-    ▼
-In Progress
-    │
-    ▼
-Completed
-    │
-    ▼
-Submitted
-    │
-    ▼
-Approved by Site Chief
-    │
-    ▼
-Approved by Project Manager
-    │
-    ▼
-Reported
+# production mode
+$ pnpm run start:prod
 ```
 
-Rejected records return to the responsible user with comments for correction and resubmission.
+## Run tests
 
----
+```bash
+# unit tests
+$ pnpm run test
 
-# Offline Strategy
+# e2e tests
+$ pnpm run test:e2e
 
-The mobile application supports offline execution.
-
-When there is no internet connection:
-
-- User actions are stored locally
-- Operations receive an Idempotency Key
-- Pending actions are synchronized automatically when connectivity is restored
-- FIFO synchronization preserves execution order
-
----
-
-# Security
-
-- JWT Authentication
-- Password Hashing
-- HTTPS
-- Role-Based Authorization
-- Scope-Based Access Control
-- Audit Logging
-- Secure REST APIs
-
----
-
-# Caching Strategy
-
-Redis is used to cache:
-
-- User permissions
-- Role definitions
-- Frequently accessed reference data
-
-If Redis becomes unavailable, the application automatically falls back to PostgreSQL.
-
----
-
-# Reporting
-
-Approved Daily Plans are consolidated into Daily Reports.
-
-Power BI connects using **read-only** access to visualize:
-
-- Planned vs Actual Quantity
-- Productivity
-- Man-Day
-- Overtime
-- Operational KPIs
-
----
-
-# Project Structure
-
-```
-workforce-execution-platform/
-│
-├── docs/
-│   ├── Workforce_Execution_Platform_MVP.pdf
-│   ├── Architecture.png
-│   ├── ER_Diagram.png
-│   ├── Workflow.png
-│   ├── Scope_Diagram.png
-│   └── Sequence_Diagram.png
-│
-├── diagrams/
-│   ├── architecture.drawio
-│   ├── er.dbml
-│   ├── workflow.mmd
-│   └── sequence.mmd
-│
-├── README.md
-└── LICENSE
+# test coverage
+$ pnpm run test:cov
 ```
 
----
+## Deployment
 
-# Future Enhancements
+When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
 
-The MVP architecture is intentionally simple while remaining extensible.
+If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
 
-Potential future improvements include:
+```bash
+$ pnpm install -g @nestjs/mau
+$ mau deploy
+```
 
-- Workflow Engine
-- Queue & Worker Processing
-- Event-Driven Architecture
-- Microservices
-- Kubernetes Deployment
-- Distributed Tracing
-- OpenTelemetry
-- Elasticsearch
-- Multi-Tenant Support
-- Multi-Project Support
+With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
 
----
+## Resources
 
-# Design Principles
+Check out a few resources that may come in handy when working with NestJS:
 
-- Clean Architecture
-- Layered Architecture
-- Separation of Concerns
-- Modular Monolith
-- SOLID Principles
-- Configuration over Hardcoding
-- Future Scalability
+- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
+- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
+- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
+- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
+- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
+- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
+- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
+- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
 
----
+## Support
 
-# Author
+Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
 
-**Ali Almanea**
+## Stay in touch
 
-Senior Full Stack Engineer
+- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
+- Website - [https://nestjs.com](https://nestjs.com/)
+- Twitter - [@nestframework](https://twitter.com/nestframework)
 
-- React
-- React Native
-- NestJS
-- TypeScript
-- PostgreSQL
-- Redis
-- System Design
-- Cloud Architecture
+## License
 
----
-
-> This repository contains the architectural design of an MVP solution prepared as a System Design Case Study. It focuses on software architecture, scalability, maintainability, and engineering best practices rather than production-ready implementation.
+Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
