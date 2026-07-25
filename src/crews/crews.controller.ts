@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Post,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
@@ -14,13 +24,19 @@ export class CrewsController {
 
   @Post()
   @ApiOperation({ summary: 'Create a crew for a daily plan' })
-  async create(@Body() dto: CreateCrewDto, @CurrentUser() user: AuthenticatedUser) {
+  async create(
+    @Body() dto: CreateCrewDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.service.create(dto, user);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get crew details, including assigned workers' })
-  async findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.service.findOne(id, user);
   }
 

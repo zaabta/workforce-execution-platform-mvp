@@ -1,7 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsIn, IsNotEmpty, IsString, IsUUID } from 'class-validator';
 
-export const WORKER_TYPES = ['SKILLED', 'UNSKILLED', 'TECHNICIAN', 'OPERATOR', 'SUPERVISOR'] as const;
+export const WORKER_TYPES = [
+  'SKILLED',
+  'UNSKILLED',
+  'TECHNICIAN',
+  'OPERATOR',
+  'SUPERVISOR',
+] as const;
 
 export class CreateCrewDto {
   @ApiProperty({ description: 'The daily plan this crew executes work for' })

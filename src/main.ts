@@ -41,7 +41,7 @@ async function bootstrap(): Promise<void> {
 
   const port = config.get<number>('PORT', 3000);
   await app.listen(port);
-  // eslint-disable-next-line no-console
+
   console.log(`Workforce Execution Platform API running on port ${port}`);
   console.log(`Swagger docs available at /api/docs`);
 }
