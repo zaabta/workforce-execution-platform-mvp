@@ -1,4 +1,5 @@
 import { DailyPlanStatus } from '@prisma/client';
+import { DAILY_PLAN_PERMISSIONS } from '../daily-plans/constants/daily-plan-permissions.constants';
 
 export type WorkflowAction =
   | 'ASSIGN'
@@ -36,7 +37,7 @@ export const WORKFLOW_DEFINITION: Record<
     {
       action: 'ASSIGN',
       to: DailyPlanStatus.ASSIGNED,
-      requiredPermission: 'daily_plan.assign',
+      requiredPermission: DAILY_PLAN_PERMISSIONS.ASSIGN,
       validators: [
         'ProjectSelected',
         'LocationSelected',
@@ -50,7 +51,7 @@ export const WORKFLOW_DEFINITION: Record<
     {
       action: 'START',
       to: DailyPlanStatus.IN_PROGRESS,
-      requiredPermission: 'daily_plan.start_execution',
+      requiredPermission: DAILY_PLAN_PERMISSIONS.START_EXECUTION,
       validators: ['CrewCreated', 'WorkersAssigned'],
       sideEffects: [],
     },
@@ -59,7 +60,7 @@ export const WORKFLOW_DEFINITION: Record<
     {
       action: 'SUBMIT',
       to: DailyPlanStatus.SUBMITTED,
-      requiredPermission: 'daily_plan.submit',
+      requiredPermission: DAILY_PLAN_PERMISSIONS.SUBMIT,
       validators: [
         'ActualQuantityEntered',
         'ActualManDayEntered',
@@ -72,14 +73,14 @@ export const WORKFLOW_DEFINITION: Record<
     {
       action: 'APPROVE',
       to: DailyPlanStatus.APPROVED_BY_SITE_CHIEF,
-      requiredPermission: 'daily_plan.approve.site_chief',
+      requiredPermission: DAILY_PLAN_PERMISSIONS.APPROVE_SITE_CHIEF,
       validators: ['SubmissionCompleted'],
       sideEffects: ['NotifyProjectManager', 'CreateAuditRecord'],
     },
     {
       action: 'REJECT',
       to: DailyPlanStatus.REJECTED,
-      requiredPermission: 'daily_plan.reject',
+      requiredPermission: DAILY_PLAN_PERMISSIONS.REJECT,
       validators: ['RejectionReasonProvided'],
       sideEffects: ['NotifyHeadOfMasterRejected', 'CreateAuditRecord'],
     },
@@ -88,7 +89,7 @@ export const WORKFLOW_DEFINITION: Record<
     {
       action: 'RESUBMIT',
       to: DailyPlanStatus.SUBMITTED,
-      requiredPermission: 'daily_plan.resubmit',
+      requiredPermission: DAILY_PLAN_PERMISSIONS.RESUBMIT,
       validators: ['RejectionCommentProvided'],
       sideEffects: ['NotifySiteChief', 'CreateAuditRecord'],
     },
@@ -97,14 +98,14 @@ export const WORKFLOW_DEFINITION: Record<
     {
       action: 'APPROVE',
       to: DailyPlanStatus.APPROVED_BY_PROJECT_MANAGER,
-      requiredPermission: 'daily_plan.approve.project_manager',
+      requiredPermission: DAILY_PLAN_PERMISSIONS.APPROVE_PROJECT_MANAGER,
       validators: ['SiteChiefApprovalCompleted'],
       sideEffects: ['CreateAuditRecord'],
     },
     {
       action: 'REJECT',
       to: DailyPlanStatus.REJECTED,
-      requiredPermission: 'daily_plan.reject',
+      requiredPermission: DAILY_PLAN_PERMISSIONS.REJECT,
       validators: ['RejectionReasonProvided'],
       sideEffects: ['NotifyHeadOfMasterRejected', 'CreateAuditRecord'],
     },
@@ -113,7 +114,7 @@ export const WORKFLOW_DEFINITION: Record<
     {
       action: 'COMPLETE',
       to: DailyPlanStatus.COMPLETED,
-      requiredPermission: 'daily_plan.complete',
+      requiredPermission: DAILY_PLAN_PERMISSIONS.COMPLETE,
       validators: [],
       sideEffects: ['CreateAuditRecord'],
     },

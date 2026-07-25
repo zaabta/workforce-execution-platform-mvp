@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { parseDurationToSeconds } from '../common/utils/duration.util';
 import { AuthResponseDto } from './dto/auth-response.dto';
 
@@ -13,6 +14,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly audit: AuditService,
   ) {}
 
   private hashToken(token: string): string {
@@ -75,14 +77,12 @@ export class AuthService {
 
     const tokens = await this.issueTokens(user.id, user.email);
 
-    await this.prisma.auditLog.create({
-      data: {
-        userId: user.id,
-        action: 'LOGIN',
-        entityType: 'User',
-        entityId: user.id,
-        newValue: { ip: meta?.ip ?? null },
-      },
+    await this.audit.record({
+      userId: user.id,
+      action: 'LOGIN',
+      entityType: 'User',
+      entityId: user.id,
+      newValue: { ip: meta?.ip ?? null },
     });
 
     return tokens;

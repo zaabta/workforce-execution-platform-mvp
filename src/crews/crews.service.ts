@@ -9,13 +9,10 @@ import { DailyPlanStatus, Worker } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { AuditService } from '../audit/audit.service';
+import { Actor } from '../common/types/actor.type';
 import { AssignWorkerDto } from './dto/assign-worker.dto';
 import { CreateCrewDto } from './dto/create-crew.dto';
-
-interface Actor {
-  userId: string;
-  email: string;
-}
+import { CREW_PERMISSIONS } from './constants/crew-permissions.constants';
 
 @Injectable()
 export class CrewsService {
@@ -43,16 +40,11 @@ export class CrewsService {
     actor: Actor,
     plan: { projectId: string; regionId: string; locationId: string },
   ) {
-    const allowed = await this.authorization.hasScope(actor.userId, {
+    await this.authorization.assertScope(actor.userId, {
       projectId: plan.projectId,
       regionId: plan.regionId,
       locationId: plan.locationId,
     });
-    if (!allowed) {
-      throw new ForbiddenException(
-        'You do not have access to this Project/Region/Location scope.',
-      );
-    }
   }
 
   private async assertPermission(
@@ -60,16 +52,7 @@ export class CrewsService {
     projectId: string,
     permission: string,
   ) {
-    const allowed = await this.authorization.hasPermission(
-      actor.userId,
-      projectId,
-      [permission],
-    );
-    if (!allowed) {
-      throw new ForbiddenException(
-        `You do not have permission to perform this action. Required: ${permission}.`,
-      );
-    }
+    await this.authorization.assertPermission(actor.userId, projectId, permission);
   }
 
   async create(dto: CreateCrewDto, actor: Actor) {
@@ -81,7 +64,7 @@ export class CrewsService {
     }
 
     await this.assertScope(actor, dailyPlan);
-    await this.assertPermission(actor, dailyPlan.projectId, 'crew.create');
+    await this.assertPermission(actor, dailyPlan.projectId, CREW_PERMISSIONS.CREATE);
 
     // Crew creation is only meaningful when the Daily Plan is in progress.
     if (dailyPlan.assignedHeadMasterId !== actor.userId) {
@@ -130,7 +113,7 @@ export class CrewsService {
     await this.assertPermission(
       actor,
       crew.dailyPlan.projectId,
-      'crew.assign_worker',
+      CREW_PERMISSIONS.ASSIGN_WORKER,
     );
 
     if (crew.dailyPlan.assignedHeadMasterId !== actor.userId) {
@@ -193,7 +176,7 @@ export class CrewsService {
     await this.assertPermission(
       actor,
       crew.dailyPlan.projectId,
-      'crew.remove_worker',
+      CREW_PERMISSIONS.REMOVE_WORKER,
     );
 
     if (crew.dailyPlan.assignedHeadMasterId !== actor.userId) {

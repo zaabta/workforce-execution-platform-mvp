@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
@@ -161,5 +161,38 @@ export class AuthorizationService {
   /** Invalidate cached scopes for a user (call after scope changes). */
   async invalidateUserScopeCache(userId: string): Promise<void> {
     await this.redis.del(this.scopeKey(userId));
+  }
+
+  /**
+   * Throws ForbiddenException if the user does not have the given scope.
+   * Use this in service-layer checks after the resource has been loaded.
+   */
+  async assertScope(
+    userId: string,
+    target: ScopeCheckInput,
+  ): Promise<void> {
+    const allowed = await this.hasScope(userId, target);
+    if (!allowed) {
+      throw new ForbiddenException(
+        'You do not have access to this Project/Region/Location scope.',
+      );
+    }
+  }
+
+  /**
+   * Throws ForbiddenException if the user does not hold the required permission
+   * within the given Project. Use this in service-layer checks.
+   */
+  async assertPermission(
+    userId: string,
+    projectId: string,
+    permission: string,
+  ): Promise<void> {
+    const allowed = await this.hasPermission(userId, projectId, [permission]);
+    if (!allowed) {
+      throw new ForbiddenException(
+        `You do not have permission to perform this action. Required: ${permission}.`,
+      );
+    }
   }
 }

@@ -10,8 +10,10 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type AuthenticatedUser,
+} from '../common/decorators/current-user.decorator';
 import { AssignWorkerDto } from './dto/assign-worker.dto';
 import { CreateCrewDto } from './dto/create-crew.dto';
 import { CrewsService } from './crews.service';

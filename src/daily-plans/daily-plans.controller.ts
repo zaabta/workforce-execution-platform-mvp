@@ -13,8 +13,10 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Permissions } from '../common/decorators/permissions.decorator';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type AuthenticatedUser,
+} from '../common/decorators/current-user.decorator';
 import { DailyPlansService } from './daily-plans.service';
 import { CreateDailyPlanDto } from './dto/create-daily-plan.dto';
 import { UpdateDailyPlanDto } from './dto/update-daily-plan.dto';
@@ -22,6 +24,7 @@ import { AssignDailyPlanDto } from './dto/assign-daily-plan.dto';
 import { SubmitDailyPlanDto } from './dto/submit-daily-plan.dto';
 import { RejectDailyPlanDto } from './dto/reject-daily-plan.dto';
 import { QueryDailyPlansDto } from './dto/query-daily-plans.dto';
+import { DAILY_PLAN_PERMISSIONS } from './constants/daily-plan-permissions.constants';
 
 @ApiTags('Daily Planning')
 @ApiBearerAuth()
@@ -30,7 +33,7 @@ export class DailyPlansController {
   constructor(private readonly service: DailyPlansService) {}
 
   @Post()
-  @Permissions('daily_plan.create')
+  @Permissions(DAILY_PLAN_PERMISSIONS.CREATE)
   @ApiOperation({ summary: 'Create a Daily Plan (Technical Office Engineer)' })
   async create(
     @Body() dto: CreateDailyPlanDto,
@@ -66,7 +69,7 @@ export class DailyPlansController {
   }
 
   @Put(':id')
-  @Permissions('daily_plan.update')
+  @Permissions(DAILY_PLAN_PERMISSIONS.UPDATE)
   @ApiOperation({ summary: 'Update a Daily Plan (Draft status only)' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -77,7 +80,7 @@ export class DailyPlansController {
   }
 
   @Delete(':id')
-  @Permissions('daily_plan.delete')
+  @Permissions(DAILY_PLAN_PERMISSIONS.DELETE)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Cancel (soft-delete) a Daily Plan (Draft/Assigned status only)',

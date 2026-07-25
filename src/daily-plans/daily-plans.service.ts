@@ -10,17 +10,15 @@ import { AuthorizationService } from '../authorization/authorization.service';
 import { WorkflowService } from '../workflow/workflow.service';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { Actor } from '../common/types/actor.type';
+import { ROLE_NAMES } from '../common/constants/role-names.constants';
 import { CreateDailyPlanDto } from './dto/create-daily-plan.dto';
 import { UpdateDailyPlanDto } from './dto/update-daily-plan.dto';
 import { AssignDailyPlanDto } from './dto/assign-daily-plan.dto';
 import { SubmitDailyPlanDto } from './dto/submit-daily-plan.dto';
 import { RejectDailyPlanDto } from './dto/reject-daily-plan.dto';
 import { QueryDailyPlansDto } from './dto/query-daily-plans.dto';
-
-interface Actor {
-  userId: string;
-  email: string;
-}
+import { DAILY_PLAN_PERMISSIONS } from './constants/daily-plan-permissions.constants';
 
 @Injectable()
 export class DailyPlansService {
@@ -48,16 +46,11 @@ export class DailyPlansService {
     actor: Actor,
     plan: { projectId: string; regionId: string; locationId: string },
   ) {
-    const allowed = await this.authorization.hasScope(actor.userId, {
+    await this.authorization.assertScope(actor.userId, {
       projectId: plan.projectId,
       regionId: plan.regionId,
       locationId: plan.locationId,
     });
-    if (!allowed) {
-      throw new ForbiddenException(
-        'You do not have access to this Project/Region/Location scope.',
-      );
-    }
   }
 
   private async assertPermission(
@@ -65,16 +58,7 @@ export class DailyPlansService {
     projectId: string,
     permission: string,
   ) {
-    const allowed = await this.authorization.hasPermission(
-      actor.userId,
-      projectId,
-      [permission],
-    );
-    if (!allowed) {
-      throw new ForbiddenException(
-        `You do not have permission to perform this action. Required: ${permission}.`,
-      );
-    }
+    await this.authorization.assertPermission(actor.userId, projectId, permission);
   }
 
   /** Finds users holding `roleName` within a Project whose scope covers the given Region/Location. */
@@ -128,7 +112,7 @@ export class DailyPlansService {
 
   async create(dto: CreateDailyPlanDto, actor: Actor) {
     await this.assertScope(actor, dto);
-    await this.assertPermission(actor, dto.projectId, 'daily_plan.create');
+    await this.assertPermission(actor, dto.projectId, DAILY_PLAN_PERMISSIONS.CREATE);
 
     const plan = await this.prisma.dailyPlan.create({
       data: {
@@ -229,7 +213,7 @@ export class DailyPlansService {
   async update(id: string, dto: UpdateDailyPlanDto, actor: Actor) {
     const plan = await this.loadOrFail(id);
     await this.assertScope(actor, plan);
-    await this.assertPermission(actor, plan.projectId, 'daily_plan.update');
+    await this.assertPermission(actor, plan.projectId, DAILY_PLAN_PERMISSIONS.UPDATE);
 
     if (plan.status !== DailyPlanStatus.DRAFT) {
       throw new ConflictException(
@@ -268,7 +252,7 @@ export class DailyPlansService {
   async remove(id: string, actor: Actor) {
     const plan = await this.loadOrFail(id);
     await this.assertScope(actor, plan);
-    await this.assertPermission(actor, plan.projectId, 'daily_plan.delete');
+    await this.assertPermission(actor, plan.projectId, DAILY_PLAN_PERMISSIONS.DELETE);
 
     // Assumption (SDD does not specify further): cancellation is only safe
     // before field execution begins, to avoid discarding in-progress work.
@@ -461,18 +445,20 @@ export class DailyPlansService {
     );
 
     const siteChiefIds = await this.findRoleHoldersInScope(
-      'Site Chief',
+      ROLE_NAMES.SITE_CHIEF,
       plan.projectId,
       plan.regionId,
       plan.locationId,
     );
-    for (const userId of siteChiefIds) {
-      await this.notifications.dispatch({
-        userId,
-        title: 'Daily Plan Submitted for Review',
-        body: `A Daily Plan for ${plan.workDate.toISOString().slice(0, 10)} has been submitted and requires your review.`,
-      });
-    }
+    await Promise.all(
+      siteChiefIds.map((userId) =>
+        this.notifications.dispatch({
+          userId,
+          title: 'Daily Plan Submitted for Review',
+          body: `A Daily Plan for ${plan.workDate.toISOString().slice(0, 10)} has been submitted and requires your review.`,
+        }),
+      ),
+    );
 
     await this.audit.record({
       userId: actor.userId,
@@ -542,18 +528,20 @@ export class DailyPlansService {
 
     if (transition.to === DailyPlanStatus.APPROVED_BY_SITE_CHIEF) {
       const pmIds = await this.findRoleHoldersInScope(
-        'Project Manager',
+        ROLE_NAMES.PROJECT_MANAGER,
         plan.projectId,
         plan.regionId,
         plan.locationId,
       );
-      for (const userId of pmIds) {
-        await this.notifications.dispatch({
-          userId,
-          title: 'Daily Plan Awaiting Final Approval',
-          body: `A Daily Plan for ${plan.workDate.toISOString().slice(0, 10)} was approved by the Site Chief and awaits your approval.`,
-        });
-      }
+      await Promise.all(
+        pmIds.map((userId) =>
+          this.notifications.dispatch({
+            userId,
+            title: 'Daily Plan Awaiting Final Approval',
+            body: `A Daily Plan for ${plan.workDate.toISOString().slice(0, 10)} was approved by the Site Chief and awaits your approval.`,
+          }),
+        ),
+      );
     }
 
     await this.audit.record({
