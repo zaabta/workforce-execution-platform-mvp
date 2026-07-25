@@ -10,7 +10,7 @@ export function parseDurationToSeconds(value: string): number {
   const match = /^(\d+)\s*(s|m|h|d)$/i.exec(value.trim());
   if (!match) {
     const asNumber = Number(value);
-    if (!Number.isNaN(asNumber)) return asNumber;
+    if (!Number.isNaN(asNumber) && asNumber >= 0) return asNumber;
     throw new Error(`Invalid duration format: ${value}`);
   }
   const [, amount, unit] = match;

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { IsIn, IsNotEmpty, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export const WORKER_TYPES = ['SKILLED', 'UNSKILLED', 'TECHNICIAN', 'OPERATOR', 'SUPERVISOR'] as const;
 
@@ -11,6 +11,7 @@ export class CreateCrewDto {
   @ApiProperty({ example: 'Excavation Crew A' })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(200)
   name: string;
 
   @ApiProperty({ enum: WORKER_TYPES, example: 'SKILLED' })

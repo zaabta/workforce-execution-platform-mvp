@@ -68,7 +68,16 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
     try {
       const raw = await this.client.get(key);
-      return raw ? (JSON.parse(raw) as T) : null;
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw) as T;
+      } catch {
+        this.logger.error(
+          `Corrupted cache value for key=${key}, purging entry.`,
+        );
+        await this.client.del(key).catch(() => {});
+        return null;
+      }
     } catch (err) {
       this.available = false;
       this.logger.warn(

@@ -433,7 +433,8 @@ export class DailyPlansService {
         CommentMandatoryIfIncomplete:
           isComplete || !!(dto.comment && dto.comment.trim().length > 0),
         RejectionCommentProvided:
-          plan.status !== DailyPlanStatus.REJECTED || !!plan.rejectionReason,
+          plan.status !== DailyPlanStatus.REJECTED ||
+          !!(dto.comment && dto.comment.trim().length > 0),
       },
     });
 

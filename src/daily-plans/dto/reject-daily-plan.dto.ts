@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class RejectDailyPlanDto {
   @ApiProperty({
@@ -9,5 +9,6 @@ export class RejectDailyPlanDto {
   @IsString()
   @IsNotEmpty()
   @MinLength(5)
+  @MaxLength(500)
   reason: string;
 }
