@@ -136,8 +136,14 @@ export class AuthorizationService {
     const scopes = await this.getUserScopes(userId);
     return scopes.some((s) => {
       if (s.projectId !== target.projectId) return false;
-      if (s.regionId && s.regionId !== target.regionId) return false;
-      if (s.locationId && s.locationId !== target.locationId) return false;
+      // If target region/location are omitted, treat them as wildcards.
+      // This allows project-level endpoints to work for region/location scoped users.
+      if (target.regionId != null && s.regionId && s.regionId !== target.regionId) {
+        return false;
+      }
+      if (target.locationId != null && s.locationId && s.locationId !== target.locationId) {
+        return false;
+      }
       return true;
     });
   }

@@ -24,6 +24,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ----------------------------------------------------------------------------
+// Identity & Authorization
+// ----------------------------------------------------------------------------
+
 model User {
   id           String    @id @default(uuid()) @db.Uuid
   fullName     String    @map("full_name")
@@ -37,6 +41,7 @@ model User {
   userRoles           UserRole[]
   userScopes          UserScope[]
   refreshTokens       RefreshToken[]
+  deviceTokens        DeviceToken[]
   notifications       Notification[]
   createdDailyPlans   DailyPlan[]       @relation("TechnicalOfficeCreator")
   assignedDailyPlans  DailyPlan[]       @relation("AssignedHeadOfMaster")
@@ -179,8 +184,8 @@ model Location {
   regionId  String    @map("region_id") @db.Uuid
   code      String    @unique
   name      String
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
   region     Region      @relation(fields: [regionId], references: [id], onDelete: Cascade)
@@ -373,6 +378,22 @@ model WorkflowHistory {
 // ----------------------------------------------------------------------------
 // Notifications
 // ----------------------------------------------------------------------------
+
+/// FCM device token registry (SDD 4.7, High-Level Architecture "Firebase
+/// Cloud Messaging"). Not present in the ER diagram, but required to
+/// address push notifications to a user's mobile device(s).
+model DeviceToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @unique
+  platform  String   @default("android")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("device_tokens")
+}
 
 model Notification {
   id        String   @id @default(uuid()) @db.Uuid

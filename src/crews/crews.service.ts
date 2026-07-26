@@ -100,6 +100,22 @@ export class CrewsService {
 
     return crew;
   }
+  
+  async listCrews(
+    dailyPlanId?: string,
+    projectId?: string) {
+      const where = {
+        ...(dailyPlanId ? { dailyPlanId } : {}),
+        ...(projectId ? { dailyPlan: { projectId } } : {}),
+      };
+      const crews = await this.prisma.crew.findMany({
+        where,
+        include: {
+          dailyPlan: true,
+        },
+      });
+      return crews;
+    }
 
   async findOne(id: string, actor: Actor) {
     const crew = await this.loadCrewOrFail(id);

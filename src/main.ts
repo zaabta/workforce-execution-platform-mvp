@@ -12,9 +12,14 @@ async function bootstrap(): Promise<void> {
   app.use(helmet());
 
   const corsOrigins = config.get<string>('CORS_ORIGINS', '');
+  const originOption: string | string[] | boolean = !corsOrigins || corsOrigins === '*'
+    ? true
+    : corsOrigins.split(',').map((o) => o.trim());
   app.enableCors({
-    origin: corsOrigins ? corsOrigins.split(',').map((o) => o.trim()) : true,
+    origin: originOption,
     credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type,Authorization,Accept',
   });
 
   app.setGlobalPrefix('api/v1');
@@ -40,7 +45,7 @@ async function bootstrap(): Promise<void> {
   SwaggerModule.setup('api/docs', app, document);
 
   const port = config.get<number>('PORT', 3000);
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
   console.log(`Workforce Execution Platform API running on port ${port}`);
   console.log(`Swagger docs available at /api/docs`);

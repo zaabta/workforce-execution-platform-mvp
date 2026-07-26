@@ -4,23 +4,26 @@ import {
   IsNumber,
   IsOptional,
   IsPositive,
-  IsUUID,
+  Matches,
 } from 'class-validator';
+
+const UUID_CANONICAL_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export class UpdateDailyPlanDto {
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUUID()
+  @Matches(UUID_CANONICAL_REGEX, { message: 'towId must be a UUID' })
   towId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUUID()
+  @Matches(UUID_CANONICAL_REGEX, { message: 'stowId must be a UUID' })
   stowId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUUID()
+  @Matches(UUID_CANONICAL_REGEX, { message: 'sstowId must be a UUID' })
   sstowId?: string;
 
   @ApiPropertyOptional()

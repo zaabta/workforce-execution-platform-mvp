@@ -10,6 +10,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "seed": "ts-node prisma/seed.ts",
     "migration:dev": "prisma migrate dev",
+    "db:generate": "prisma generate",
     "migration:deploy": "prisma migrate deploy",
     "migration:reset": "prisma migrate reset",
     "redis:run": "docker run --name redis -p 6379:6379 -d redis:7.0",
@@ -37,13 +38,14 @@
     "argon2": "^0.30.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "firebase-admin": "^14.2.0",
     "helmet": "^8.0.1",
     "ioredis": "^5.0.0",
     "passport": "^0.7.0",
-    "xlsx": "^0.18.5",
     "passport-jwt": "^4.0.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

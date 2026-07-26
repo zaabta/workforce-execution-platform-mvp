@@ -6,17 +6,20 @@ import {
   IsIn,
   IsInt,
   IsOptional,
-  IsUUID,
+  Matches,
   Max,
   Min,
 } from 'class-validator';
 import { DailyPlanStatus } from '@prisma/client';
 
+const UUID_CANONICAL_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export class QueryDailyPlansDto {
-  @ApiPropertyOptional() @IsOptional() @IsUUID() projectId?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() regionId?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() locationId?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() assignedHeadMasterId?: string;
+  @ApiPropertyOptional() @IsOptional() @Matches(UUID_CANONICAL_REGEX, { message: 'projectId must be a UUID' }) projectId?: string;
+  @ApiPropertyOptional() @IsOptional() @Matches(UUID_CANONICAL_REGEX, { message: 'regionId must be a UUID' }) regionId?: string;
+  @ApiPropertyOptional() @IsOptional() @Matches(UUID_CANONICAL_REGEX, { message: 'locationId must be a UUID' }) locationId?: string;
+  @ApiPropertyOptional() @IsOptional() @Matches(UUID_CANONICAL_REGEX, { message: 'assignedHeadMasterId must be a UUID' }) assignedHeadMasterId?: string;
 
   @ApiPropertyOptional({ enum: DailyPlanStatus })
   @IsOptional()

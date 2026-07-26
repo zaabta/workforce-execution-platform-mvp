@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
@@ -12,6 +13,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { CrewsModule } from './crews/crews.module';
 import { WorkflowModule } from './workflow/workflow.module';
 import { DailyPlansModule } from './daily-plans/daily-plans.module';
+import { CatalogModule } from './catalog/catalog.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -41,6 +43,7 @@ import { ScopeGuard } from './common/guards/scope.guard';
     UsersModule,
     WorkflowModule,
     DailyPlansModule,
+    CatalogModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
@@ -51,4 +54,8 @@ import { ScopeGuard } from './common/guards/scope.guard';
     { provide: APP_GUARD, useClass: ScopeGuard },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(LoggerMiddleware).forRoutes('*');
+  }
+}

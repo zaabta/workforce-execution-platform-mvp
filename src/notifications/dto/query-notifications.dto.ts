@@ -3,11 +3,7 @@ import { Type } from 'class-transformer';
 import { IsBoolean, IsInt, IsOptional, Max, Min } from 'class-validator';
 
 export class QueryNotificationsDto {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @Type(() => Boolean)
-  @IsBoolean()
-  isRead?: boolean;
+  @ApiPropertyOptional() @IsOptional() @Type(() => Boolean) @IsBoolean() isRead?: boolean;
 
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()

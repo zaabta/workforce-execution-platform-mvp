@@ -8,7 +8,9 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
 } from '@nestjs/common';
+import { ApiQuery } from '@nestjs/swagger';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CurrentUser,
@@ -32,6 +34,27 @@ export class CrewsController {
   ) {
     return this.service.create(dto, user);
   }
+
+  @Get()
+    @ApiOperation({ summary: 'List crews with optional daily plan filtering' })
+    @ApiQuery({
+      name: 'dailyPlanId',
+      type: 'string',
+      required: false,
+      description: 'Daily Plan ID filter',
+    })
+    @ApiQuery({
+      name: 'projectId',
+      type: 'string',
+      required: false,
+      description: 'Project ID filter',
+    })
+    async listCrews(
+      @Query('dailyPlanId') dailyPlanId?: string,
+      @Query('projectId') projectId?: string,
+    ) {
+      return this.service.listCrews(dailyPlanId, projectId);
+    }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get crew details, including assigned workers' })
