@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "workers" ADD COLUMN "type" TEXT NOT NULL DEFAULT 'SKILLED';

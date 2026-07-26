@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
+import { IsIn, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
+import { WORKER_TYPES } from './create-crew.dto';
 
 export class AssignWorkerDto {
   @ApiPropertyOptional({
@@ -25,4 +26,12 @@ export class AssignWorkerDto {
   @IsOptional()
   @IsString()
   fullName?: string;
+
+  @ApiPropertyOptional({
+    enum: WORKER_TYPES,
+    description: 'Worker type, used only when creating a new worker via employeeNo/fullName. Defaults to SKILLED.',
+  })
+  @IsOptional()
+  @IsIn(WORKER_TYPES)
+  type?: string;
 }

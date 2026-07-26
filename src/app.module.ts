@@ -14,6 +14,7 @@ import { CrewsModule } from './crews/crews.module';
 import { WorkflowModule } from './workflow/workflow.module';
 import { DailyPlansModule } from './daily-plans/daily-plans.module';
 import { CatalogModule } from './catalog/catalog.module';
+import { WorkersModule } from './workers/workers.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -44,6 +45,7 @@ import { ScopeGuard } from './common/guards/scope.guard';
     WorkflowModule,
     DailyPlansModule,
     CatalogModule,
+    WorkersModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
