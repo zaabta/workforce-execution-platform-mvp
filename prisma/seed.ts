@@ -302,6 +302,29 @@ async function main() {
     }
   }
 
+  console.log('Seeding sample workers...');
+  const WORKERS: { employeeNo: string; fullName: string; type: string }[] = [
+    { employeeNo: 'EMP-1001', fullName: 'Hassan Karim', type: 'SKILLED' },
+    { employeeNo: 'EMP-1002', fullName: 'Faisal Nabil', type: 'SKILLED' },
+    { employeeNo: 'EMP-1003', fullName: 'Mustafa Adel', type: 'UNSKILLED' },
+    { employeeNo: 'EMP-1004', fullName: 'Rami Saeed', type: 'UNSKILLED' },
+    { employeeNo: 'EMP-1005', fullName: 'Bilal Younes', type: 'TECHNICIAN' },
+    { employeeNo: 'EMP-1006', fullName: 'Adnan Rashid', type: 'TECHNICIAN' },
+    { employeeNo: 'EMP-1007', fullName: 'Salem Kareem', type: 'OPERATOR' },
+    { employeeNo: 'EMP-1008', fullName: 'Nasser Fadel', type: 'OPERATOR' },
+    { employeeNo: 'EMP-1009', fullName: 'Waleed Hamdi', type: 'SUPERVISOR' },
+    { employeeNo: 'EMP-1010', fullName: 'Jamal Sultan', type: 'SKILLED' },
+    { employeeNo: 'EMP-1011', fullName: 'Tarek Munir', type: 'UNSKILLED' },
+    { employeeNo: 'EMP-1012', fullName: 'Ziad Hakim', type: 'TECHNICIAN' },
+  ];
+  for (const w of WORKERS) {
+    await prisma.worker.upsert({
+      where: { employeeNo: w.employeeNo },
+      update: { fullName: w.fullName, type: w.type },
+      create: w,
+    });
+  }
+
   console.log('Seeding complete.');
 }
 

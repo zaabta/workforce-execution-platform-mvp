@@ -81,14 +81,26 @@ export class CrewsService {
       );
     }
 
-    const crew = await this.prisma.crew.create({
-      data: {
-        dailyPlanId: dto.dailyPlanId,
-        name: dto.name,
-        workerType: dto.workerType,
-      },
-      include: { crewMembers: { include: { worker: true } } },
-    });
+    const crew = dto.id
+      ? await this.prisma.crew.upsert({
+          where: { id: dto.id },
+          update: {},
+          create: {
+            id: dto.id,
+            dailyPlanId: dto.dailyPlanId,
+            name: dto.name,
+            workerType: dto.workerType,
+          },
+          include: { crewMembers: { include: { worker: true } } },
+        })
+      : await this.prisma.crew.create({
+          data: {
+            dailyPlanId: dto.dailyPlanId,
+            name: dto.name,
+            workerType: dto.workerType,
+          },
+          include: { crewMembers: { include: { worker: true } } },
+        });
 
     await this.audit.record({
       userId: actor.userId,
@@ -151,10 +163,11 @@ export class CrewsService {
     } else if (dto.employeeNo) {
       worker = await this.prisma.worker.upsert({
         where: { employeeNo: dto.employeeNo },
-        update: {},
+        update: { ...(dto.type ? { type: dto.type } : {}) },
         create: {
           employeeNo: dto.employeeNo,
           fullName: dto.fullName ?? dto.employeeNo,
+          type: dto.type ?? 'SKILLED',
         },
       });
     } else {
